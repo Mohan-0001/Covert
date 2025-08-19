@@ -193,6 +193,17 @@ app.whenReady().then(() => {
     console.log('Overlay toggled (global):', isOverlayOn)
   })
 
+  globalShortcut.register('CommandOrControl+Shift+F', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore() // unminimize if needed
+      }
+      mainWindow.show() // make sure it's visible
+      mainWindow.focus() // give it OS focus
+      mainWindow.webContents.send('input-focus')
+    }
+  })
+
   // Register the global shortcut
   // globalShortcut.register('CommandOrControl+Shift+S', async () => {
   //   const win = BrowserWindow.getFocusedWindow() || mainWindow

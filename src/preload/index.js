@@ -15,6 +15,8 @@ if (process.contextIsolated) {
       on: (channel, listener) => ipcRenderer.on(channel, listener),
       removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
       send: (channel, data) => ipcRenderer.send(channel, data),
+      onInputFocus: (callback) => ipcRenderer.on("input-focus", callback),
+
 
       // New API for managing the screenshot queue
       onScreenshotQueueUpdate: (callback) =>

@@ -5,47 +5,55 @@ import ReactMarkdown from 'react-markdown'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
+// ----------------------
+// Markdown Renderer
+// ----------------------
 const MarkdownContent = ({ text }) => {
   return (
-    <ReactMarkdown
-      className="prose prose-invert max-w-none break-words"
-      children={text}
-      components={{
-        code({ node, inline, className, children, ...props }) {
-          const match = /language-(\w+)/.exec(className || '')
-          return !inline && match ? (
-            <SyntaxHighlighter style={dracula} language={match[1]} PreTag="div" {...props}>
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>
-          ) : (
-            <code className={className} {...props}>
-              {children}
-            </code>
-          )
-        }
-      }}
-    />
+    <div className="prose prose-invert max-w-none break-words">
+      <ReactMarkdown
+        children={text}
+        components={{
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '')
+            return !inline && match ? (
+              <SyntaxHighlighter
+                style={dracula}
+                language={match[1]}
+                PreTag="div"
+                {...props}
+              >
+                {String(children).replace(/\n$/, '')}
+              </SyntaxHighlighter>
+            ) : (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            )
+          }
+        }}
+      />
+    </div>
   )
 }
 
-// Opacity and brightness maps for dull mode (dim) and whitened mode (bright)
+// ----------------------
+// Dull / Whitened Styles
+// ----------------------
 const dullOpacityMap = [1, 0.8, 0.6, 0.4, 0.2, 0]
 const dullBrightnessMap = [1, 0.9, 0.8, 0.7, 0.6, 0.5]
-const whitenedOpacityMap = [1, 1, 1, 1, 1, 1] // Keep opacity normal for whitened, adjust brightness only
+const whitenedOpacityMap = [1, 1, 1, 1, 1, 1]
 const whitenedBrightnessMap = [1, 1.1, 1.2, 1.3, 1.4, 1.5]
 
 const computeStyles = (dullLevel, whitenedLevel) => {
-  // Base styles
   let opacity = 1
   let brightness = 1
 
-  // Apply dull (dim) effect if dullLevel active
   if (dullLevel > 0) {
     opacity = dullOpacityMap[dullLevel]
     brightness = dullBrightnessMap[dullLevel]
   }
 
-  // Apply whitened (bright) effect if whitenedLevel active - overrides dull
   if (whitenedLevel > 0) {
     opacity = whitenedOpacityMap[whitenedLevel]
     brightness = whitenedBrightnessMap[whitenedLevel]
@@ -54,12 +62,18 @@ const computeStyles = (dullLevel, whitenedLevel) => {
   return { opacity, brightness }
 }
 
+// ----------------------
+// Messages
+// ----------------------
 const UserMessage = ({ text, dullLevel = 0, whitenedLevel = 0 }) => {
   const { opacity, brightness } = computeStyles(dullLevel, whitenedLevel)
-
   return (
     <div className="flex items-start gap-3">
-      <img src="/user.svg" alt="User" className="w-8 h-8 rounded-full flex-shrink-0" />
+      <img
+        src="/user.svg"
+        alt="User"
+        className="w-8 h-8 rounded-full flex-shrink-0"
+      />
       <p
         className="bg-white/10 text-white rounded-xl p-3 max-w-[97%] break-words"
         style={{ opacity, filter: `brightness(${brightness})` }}
@@ -75,7 +89,11 @@ const BotMessage = ({ text, isLoading, dullLevel = 0, whitenedLevel = 0 }) => {
 
   return (
     <div className="flex items-start gap-3">
-      <img src="/bot.jpg" alt="Bot" className="w-8 h-8 rounded-full flex-shrink-0" />
+      <img
+        src="/bot.jpg"
+        alt="Bot"
+        className="w-8 h-8 rounded-full flex-shrink-0"
+      />
       {isLoading ? (
         <div className="loader flex flex-col gap-1 w-20">
           <hr className="w-full h-2 bg-gray-500 rounded-full animate-pulse" />
@@ -94,15 +112,13 @@ const BotMessage = ({ text, isLoading, dullLevel = 0, whitenedLevel = 0 }) => {
   )
 }
 
+// ----------------------
+// Chat Section
+// ----------------------
 const ChatSection = ({ isOverlay }) => {
-  const {
-    sent,
-    input,
-    setInput,
-    loading,
-    messageHistory = [],
-    setMessageHistory
-  } = useContext(dataContext)
+  const { sent, input, setInput, loading, messageHistory = [], setMessageHistory } =
+    useContext(dataContext)
+
   const [isProblemMode, setIsProblemMode] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -111,50 +127,48 @@ const ChatSection = ({ isOverlay }) => {
   const [dullLevel, setDullLevel] = useState(0)
   const [whitenedLevel, setWhitenedLevel] = useState(0)
 
-  // Combined key handler for dull and whitened levels
+  // Ctrl+D / Ctrl+L for dull/whitened effects
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'd') {
           e.preventDefault()
           setDullLevel((level) => (level >= MAX_LEVEL ? 0 : level + 1))
-          setWhitenedLevel(0) // Reset whitened mode on dull toggle
+          setWhitenedLevel(0)
         } else if (e.key.toLowerCase() === 'l') {
           e.preventDefault()
           setWhitenedLevel((level) => (level >= MAX_LEVEL ? 0 : level + 1))
-          setDullLevel(0) // Reset dull mode on whitened toggle
+          setDullLevel(0)
         }
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Clear chat history on Ctrl+N and focus input on Ctrl+F
+  // Ctrl+N clears chat
   useEffect(() => {
-    function handleKeyDown(e) {
+    const handleKeyDown = (e) => {
       if (e.ctrlKey && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         setMessageHistory([])
-      } else if (e.ctrlKey && e.shiftkey && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        if (inputRef.current) inputRef.current.focus()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setMessageHistory])
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messageHistory])
+
+  // Focus input from external trigger
+  useEffect(() => {
+    window.electron?.onInputFocus(() => {
+      inputRef.current?.focus()
+    })
+  }, [])
 
   const handleSend = () => {
     if (input.trim()) {
@@ -179,7 +193,9 @@ const ChatSection = ({ isOverlay }) => {
             <h1 className="text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
               Your AI Assistant
             </h1>
-            <span className="text-xl text-gray-400 mt-2">How can I help you today?</span>
+            <span className="text-xl text-gray-400 mt-2">
+              How can I help you today?
+            </span>
           </div>
         ) : (
           messageHistory.map((message, index) => {
